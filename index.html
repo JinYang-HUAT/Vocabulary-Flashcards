@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vocabulary Flashcards</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #e2e8f0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 20px;
+  }
+  h1 { font-size: 1.4rem; margin: 8px 0 4px; font-weight: 600; letter-spacing: .5px; }
+  .subtitle { font-size: .85rem; color: #94a3b8; margin-bottom: 18px; }
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    margin-bottom: 18px;
+  }
+  button {
+    cursor: pointer; border: none; border-radius: 10px;
+    padding: 9px 16px; font-size: .9rem; font-weight: 600;
+    background: #334155; color: #e2e8f0; transition: .2s;
+  }
+  button:hover { background: #475569; }
+  button.primary { background: #2563eb; color: #fff; }
+  button.primary:hover { background: #1d4ed8; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .counter { font-size: .85rem; color: #94a3b8; align-self: center; margin: 0 6px; }
+
+  .card-scene {
+    width: min(92vw, 560px);
+    height: min(75vh, 650px);
+    perspective: 1400px;
+    margin-bottom: 18px;
+  }
+  .card {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    transition: transform .55s cubic-bezier(.4,.2,.2,1);
+    cursor: pointer;
+  }
+  .card.flipped { transform: rotateY(180deg); }
+
+  .face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border-radius: 18px;
+    background: #f8fafc; color: #0f172a;
+    box-shadow: 0 18px 45px rgba(0,0,0,.45);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px; overflow: hidden;
+  }
+  .face.back { transform: rotateY(180deg); background: #eef2ff; }
+
+  .front-img {
+    max-width: 100%; max-height: 65%;
+    object-fit: contain; border-radius: 10px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  .front-img.loaded { opacity: 1; }
+  
+  .front-word {
+    margin-top: 15px; font-size: 1.5rem; font-weight: 800; color: #1e293b;
+    text-align: center; word-break: break-word;
+  }
+  .hint { position: absolute; bottom: 12px; font-size: .75rem; color: #94a3b8; }
+
+  .speak-btn {
+    margin-top: 15px; background: #2563eb; color: #fff;
+    padding: 8px 22px; border-radius: 999px; font-size: .9rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .speak-btn:hover { background: #1d4ed8; }
+
+  .back-word { font-size: 1.7rem; font-weight: 800; color: #1e3a8a; text-align: center; word-break: break-word; }
+  .phonetic { margin: 8px 0 4px; font-size: 1.05rem; color: #475569; font-family: "Times New Roman", serif; }
+  .pos-def { margin-top: 15px; font-size: 1.05rem; line-height: 1.65; text-align: left; width: 100%; max-height: 50%; overflow-y: auto; padding: 0 8px; }
+  .pos-def .pos { color: #b45309; font-weight: 700; font-style: italic; }
+
+  .no-img {
+    width: 100%; height: 65%; display: flex; align-items: center; justify-content: center;
+    color: #94a3b8; font-size: .95rem; border: 2px dashed #cbd5e1; border-radius: 10px;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Vocabulary Flashcards</h1>
+<div class="subtitle">点击卡片翻面 · 点🔊听发音</div>
+
+<div class="toolbar">
+  <button id="prevBtn" class="primary">← 上一个</button>
+  <button id="flipBtn" class="primary">翻面</button>
+  <button id="nextBtn" class="primary">下一个 →</button>
+  <button id="orderBtn">顺序播放</button>
+  <button id="shuffleBtn">随机打乱</button>
+  <span class="counter" id="counter"></span>
+</div>
+
+<div class="card-scene">
+  <div class="card" id="card">
+    <div class="face front">
+      <div id="imgContainer" style="width:100%; height:65%; display:flex; align-items:center; justify-content:center; position:relative;">
+        <img id="frontImg" class="front-img" alt="">
+        <div id="loadingText" class="no-img" style="display:none; position:absolute; inset:0;">图片加载中…</div>
+      </div>
+      <div class="front-word" id="frontWord"></div>
+      <button class="speak-btn" id="speakBtnFront">🔊 发音</button>
+      <div class="hint">点击卡片查看释义</div>
+    </div>
+    <div class="face back">
+      <div class="back-word" id="backWord"></div>
+      <div class="phonetic" id="phonetic"></div>
+      <div class="pos-def" id="posDef"></div>
+      <button class="speak-btn" id="speakBtnBack">🔊 发音</button>
+      <div class="hint">点击卡片返回图片</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ 数据区 ============ */
+// 使用 jsDelivr CDN 镜像，国内访问更稳定
+const RAW_BASE = "https://cdn.jsdelivr.net/gh/JinYang-HUAT/Vocabulary-Flashcards@main/";
+
+// 音标 + 词性释义
+const DATA = {
+  "admiral": { ipa: "/ˈædmərəl/", posDef: "<span class='pos'>n.</span> 海军上将；舰队司令" },
+  "adulterate": { ipa: "/əˈdʌltəreɪt/", posDef: "<span class='pos'>v.</span> 掺假；掺杂（使质量降低）" },
+  "antibiotic": { ipa: "/ˌæntibaɪˈɒtɪk/", posDef: "<span class='pos'>n.</span> 抗生素 <span class='pos'>adj.</span> 抗生素的" },
+  "antimicrobial": { ipa: "/ˌæntimaɪˈkrəʊbiəl/", posDef: "<span class='pos'>adj.</span> 抗微生物的 <span class='pos'>n.</span> 抗微生物剂" },
+  "atrocity": { ipa: "/əˈtrɒsəti/", posDef: "<span class='pos'>n.</span> 暴行；残忍；骇人听闻的事" },
+  "avert": { ipa: "/əˈvɜːt/", posDef: "<span class='pos'>v.</span> 避免；防止；转移（目光）" },
+  "cemetery": { ipa: "/ˈsemətri/", posDef: "<span class='pos'>n.</span> 墓地；公墓" },
+  "chivalry": { ipa: "/ˈʃɪvəlri/", posDef: "<span class='pos'>n.</span> 骑士精神；侠义" },
+  "compliant": { ipa: "/kəmˈplaɪənt/", posDef: "<span class='pos'>adj.</span> 顺从的；服从的；符合规定的" },
+  "comply": { ipa: "/kəmˈplaɪ/", posDef: "<span class='pos'>v.</span> 遵守；服从；照做（comply with）" },
+  "contravene": { ipa: "/ˌkɒntrəˈviːn/", posDef: "<span class='pos'>v.</span> 违反；违犯（法律、规定）" },
+  "courtly": { ipa: "/ˈkɔːtli/", posDef: "<span class='pos'>adj.</span> 宫廷的；彬彬有礼的" },
+  "crumble": { ipa: "/ˈkrʌmbl/", posDef: "<span class='pos'>v.</span> 弄碎；崩溃；瓦解" },
+  "crumple": { ipa: "/ˈkrʌmpl/", posDef: "<span class='pos'>v.</span> 弄皱；压皱；（脸）皱起" },
+  "crux": { ipa: "/krʌks/", posDef: "<span class='pos'>n.</span> 关键；症结；难题的核心" },
+  "debris": { ipa: "/ˈdebriː/", posDef: "<span class='pos'>n.</span> 碎片；残骸；瓦砾" },
+  "emirate": { ipa: "/ˈemɪrət/", posDef: "<span class='pos'>n.</span> 酋长国；埃米尔国" },
+  "empirical": { ipa: "/ɪmˈpɪrɪkl/", posDef: "<span class='pos'>adj.</span> 经验主义的；以实验/观察为依据的" },
+  "eventuality": { ipa: "/ɪˌventʃuˈæləti/", posDef: "<span class='pos'>n.</span> 可能发生的事；偶然性" },
+  "extravagant": { ipa: "/ɪkˈstrævəɡənt/", posDef: "<span class='pos'>adj.</span> 奢侈的；浪费的；过度的" },
+  "extravaganza": { ipa: "/ɪkˌstrævəˈɡænzə/", posDef: "<span class='pos'>n.</span> 盛大演出；豪华的娱乐活动" },
+  "fester": { ipa: "/ˈfestə(r)/", posDef: "<span class='pos'>v.</span> 化脓；溃烂；（情绪）恶化" },
+  "footage": { ipa: "/ˈfʊtɪdʒ/", posDef: "<span class='pos'>n.</span> 影片片段；镜头素材" },
+  "glitz": { ipa: "/ɡlɪts/", posDef: "<span class='pos'>n.</span> 浮华；耀眼的光彩" },
+  "haphazard": { ipa: "/ˌhæpˈhæzəd/", posDef: "<span class='pos'>adj.</span> 随意的；杂乱的；无计划的" },
+  "incentive": { ipa: "/ɪnˈsentɪv/", posDef: "<span class='pos'>n.</span> 激励；刺激；诱因" },
+  "infiltrate": { ipa: "/ˈɪnfɪltreɪt/", posDef: "<span class='pos'>v.</span> 潜入；渗透；混入" },
+  "inquiry": { ipa: "/ɪnˈkwaɪəri/", posDef: "<span class='pos'>n.</span> 询问；调查；探究" },
+  "Israel": { ipa: "/ˈɪzreɪl/", posDef: "<span class='pos'>n.</span> 以色列（国家）" },
+  "Israeli": { ipa: "/ɪzˈreɪli/", posDef: "<span class='pos'>adj.</span> 以色列的 <span class='pos'>n.</span> 以色列人" },
+  "Jerusalem": { ipa: "/dʒəˈruːsələm/", posDef: "<span class='pos'>n.</span> 耶路撒冷（城市）" },
+  "jostle": { ipa: "/ˈdʒɒsl/", posDef: "<span class='pos'>v.</span> 推挤；碰撞；竞争" },
+  "legislature": { ipa: "/ˈledʒɪsleɪtʃə(r)/", posDef: "<span class='pos'>n.</span> 立法机关；议会" },
+  "legitimate": { ipa: "/lɪˈdʒɪtɪmət/", posDef: "<span class='pos'>adj.</span> 合法的；正当的；合理的" },
+  "loggerhead": { ipa: "/ˈlɒɡəhed/", posDef: "<span class='pos'>n.</span> 蠢人；（at loggerheads 争执不下）；赤蠵龟" },
+  "maritime": { ipa: "/ˈmærɪtaɪm/", posDef: "<span class='pos'>adj.</span> 海事的；海运的；沿海的" },
+  "mediation": { ipa: "/ˌmiːdiˈeɪʃn/", posDef: "<span class='pos'>n.</span> 调解；仲裁" },
+  "microbial": { ipa: "/maɪˈkrəʊbiəl/", posDef: "<span class='pos'>adj.</span> 微生物的" },
+  "militia": { ipa: "/məˈlɪʃə/", posDef: "<span class='pos'>n.</span> 民兵；民兵组织" },
+  "minaret": { ipa: "/ˌmɪnəˈret/", posDef: "<span class='pos'>n.</span> 宣礼塔（清真寺尖塔）" },
+  "mob": { ipa: "/mɒb/", posDef: "<span class='pos'>n.</span> 暴民；人群 <span class='pos'>v.</span> 围攻；成群结队地围住" },
+  "morph": { ipa: "/mɔːf/", posDef: "<span class='pos'>v.</span> 变形；改变形态" },
+  "narcotic": { ipa: "/nɑːˈkɒtɪk/", posDef: "<span class='pos'>n.</span> 麻醉品；毒品 <span class='pos'>adj.</span> 麻醉的" },
+  "octagonal": { ipa: "/ɒkˈtæɡənl/", posDef: "<span class='pos'>adj.</span> 八边形的" },
+  "octangonal cup": { ipa: "/ɒkˈtæɡənl kʌp/", posDef: "<span class='pos'>n.</span> 八边形杯子（注：文件名拼写为 octangonal，规范拼写为 octagonal）" },
+  "pickaxe": { ipa: "/ˈpɪkæks/", posDef: "<span class='pos'>n.</span> 镐；鹤嘴锄" },
+  "pluck": { ipa: "/plʌk/", posDef: "<span class='pos'>v.</span> 拔；摘；弹拨 <span class='pos'>n.</span> 勇气" },
+  "preside": { ipa: "/prɪˈzaɪd/", posDef: "<span class='pos'>v.</span> 主持；主管（preside over）" },
+  "ratify": { ipa: "/ˈrætɪfaɪ/", posDef: "<span class='pos'>v.</span> 批准；正式签署（条约等）" },
+  "rift": { ipa: "/rɪft/", posDef: "<span class='pos'>n.</span> 裂缝；裂痕；分歧" },
+  "rubble": { ipa: "/ˈrʌbl/", posDef: "<span class='pos'>n.</span> 瓦砾；碎石；废墟" },
+  "sabotage": { ipa: "/ˈsæbətɑːʒ/", posDef: "<span class='pos'>n.</span> 破坏活动 <span class='pos'>v.</span> 蓄意破坏" },
+  "sanitize": { ipa: "/ˈsænətaɪz/", posDef: "<span class='pos'>v.</span> 消毒；使清洁；净化" },
+  "sanitizer": { ipa: "/ˈsænətaɪzə(r)/", posDef: "<span class='pos'>n.</span> 消毒剂；洗手液" },
+  "Saudi Arabia": { ipa: "/ˌsaʊdi əˈreɪbiə/", posDef: "<span class='pos'>n.</span> 沙特阿拉伯（国家）" },
+  "smuggle": { ipa: "/ˈsmʌɡl/", posDef: "<span class='pos'>v.</span> 走私；偷运；偷偷携带" },
+  "smuggler": { ipa: "/ˈsmʌɡlə(r)/", posDef: "<span class='pos'>n.</span> 走私者；偷运者" },
+  "squeeze_squash_crush": { ipa: "/skwiːz skwɒʃ krʌʃ/", posDef: "<span class='pos'>v.</span> squeeze 挤压；squash 压扁；crush 压碎——三个近义动词辨析" },
+  "swathe": { ipa: "/sweɪð/", posDef: "<span class='pos'>n.</span> 大片区域 <span class='pos'>v.</span> 包裹；缠裹" },
+  "terms and conditions": { ipa: "/tɜːmz ənd kənˈdɪʃnz/", posDef: "<span class='pos'>n.</span> 条款与条件（合同/服务条款）" },
+  "United Arab Emirates": { ipa: "/juˌnaɪtɪd ˌærəb ˈemɪrəts/", posDef: "<span class='pos'>n.</span> 阿拉伯联合酋长国（阿联酋）" },
+  "vigilant": { ipa: "/ˈvɪdʒɪlənt/", posDef: "<span class='pos'>adj.</span> 警惕的；警觉的" },
+  "violate": { ipa: "/ˈvaɪəleɪt/", posDef: "<span class='pos'>v.</span> 违反；侵犯；亵渎" },
+  "vociferous": { ipa: "/vəˈsɪfərəs/", posDef: "<span class='pos'>adj.</span> 喧嚣的；大声疾呼的；喧嚷的" },
+  "wreckage": { ipa: "/ˈrekɪdʒ/", posDef: "<span class='pos'>n.</span> 残骸；失事后的残骸；破坏" }
+};
+
+// 已过滤掉 .txt 文件和同名不同格式的图片（保留最先出现的图片格式）
+const RAW_FILES = [
+  "admiral.jpg","adulterate.jpg","antibiotic.jpg","antimicrobial.png","atrocity.png","avert.png",
+  "cemetery.jpg","chivalry.jpg","compliant.png","comply.png","contravene.png","courtly.png",
+  "crumble.jpg","crumple.png","crux.jpg","debris.png","emirate.jpg","empirical.jpg","eventuality.jpg",
+  "extravagant.jpg","extravaganza.jpg","fester.png","footage.png","glitz.png","haphazard.png",
+  "incentive.png","infiltrate.jpg","inquiry.png","Israel.jpg","Israeli.jpg","Jerusalem.avif",
+  "jostle.jpg","legislature.jpg","legitimate.png","loggerhead.jpg","maritime.jpg","mediation.jpg",
+  "microbial.png","militia.jpg","minaret.png","mob.png","morph-1.gif","morph-2.gif","morph-3.gif",
+  "morph.gif","narcotic.jpg","octagonal.jpg","octangonal cup.png","pickaxe.png","pluck.jpg",
+  "preside.jpg","ratify.png","rift.png","rubble.jpg","sabotage.png","sanitize.jpg","sanitizer.png",
+  "Saudi Arabia.jpg","smuggle.jpg","smuggle1.avif","smuggler.jpg","squeeze_squash_crush.png",
+  "swathe.jpg","terms and conditions.png","United Arab Emirates.jpg","vigilant.jpg","violate.jpg",
+  "vociferous.png","wreckage.jpg"
+];
+
+/* ============ 工具函数 ============ */
+function fileBaseName(f) {
+  const i = f.lastIndexOf(".");
+  return i > 0 ? f.slice(0, i) : f;
+}
+function lookupKey(file) {
+  const base = fileBaseName(file);
+  if (DATA[base]) return base;
+  const m = base.match(/^([A-Za-z][A-Za-z _-]*?)[-_]?\d+$/);
+  if (m && DATA[m[1].trim()]) return m[1].trim();
+  return base;
+}
+function rawUrl(file) {
+  return RAW_BASE + encodeURIComponent(file).replace(/%2F/g, "/");
+}
+
+/* ============ 状态 ============ */
+let deck = RAW_FILES.slice();
+let index = 0;
+
+const cardEl = document.getElementById("card");
+const frontImg = document.getElementById("frontImg");
+const frontWord = document.getElementById("frontWord");
+const backWord = document.getElementById("backWord");
+const phoneticEl = document.getElementById("phonetic");
+const posDefEl = document.getElementById("posDef");
+const counterEl = document.getElementById("counter");
+const orderBtn = document.getElementById("orderBtn");
+const shuffleBtn = document.getElementById("shuffleBtn");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const flipBtn = document.getElementById("flipBtn");
+const loadingText = document.getElementById("loadingText");
+
+// 预加载缓存池
+const imageCache = {};
+
+function preloadImage(idx) {
+  if (idx < 0 || idx >= deck.length) return;
+  const file = deck[idx];
+  const url = rawUrl(file);
+  if (!imageCache[url]) {
+    const img = new Image();
+    img.src = url;
+    imageCache[url] = img;
+  }
+}
+
+/* ============ 渲染 ============ */
+function render() {
+  cardEl.classList.remove("flipped");
+  const file = deck[index];
+  const key = lookupKey(file);
+  const info = DATA[key] || { ipa: "", posDef: "（释义待补充）" };
+  const displayWord = fileBaseName(file);
+
+  frontWord.textContent = displayWord;
+  backWord.textContent = displayWord;
+  phoneticEl.textContent = info.ipa ? info.ipa : "";
+  posDefEl.innerHTML = info.posDef;
+
+  frontImg.classList.remove("loaded");
+  loadingText.style.display = "none";
+  frontImg.style.display = "block";
+
+  frontImg.onload = function() {
+    frontImg.classList.add("loaded");
+    loadingText.style.display = "none";
+  };
+
+  frontImg.onerror = function () {
+    frontImg.style.display = "none";
+    loadingText.style.display = "block";
+    loadingText.innerHTML = "图片加载失败<br><span style='font-size:0.8em'>请检查网络或 jsDelivr 缓存</span>";
+  };
+
+  const url = rawUrl(file);
+  if (imageCache[url] && imageCache[url].complete) {
+    frontImg.src = url;
+  } else {
+    loadingText.style.display = "block";
+    frontImg.src = url;
+  }
+
+  counterEl.textContent = (index + 1) + " / " + deck.length;
+  prevBtn.disabled = index === 0;
+  nextBtn.disabled = index === deck.length - 1;
+
+  preloadImage(index + 1);
+  preloadImage(index + 2);
+}
+
+/* ============ 发音 ============ */
+let voices = [];
+function loadVoices() { voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
+loadVoices();
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices;
+
+function speakCurrent() {
+  if (!window.speechSynthesis) { alert("当前浏览器不支持语音合成"); return; }
+  const file = deck[index];
+  const word = fileBaseName(file).replace(/_/g, " ").replace(/-/g, " ");
+  const u = new SpeechSynthesisUtterance(word);
+  u.lang = "en-US";
+  u.rate = 0.9;
+  const en = voices.find(v => /en[-_]US/i.test(v.lang)) || voices.find(v => /^en/i.test(v.lang));
+  if (en) u.voice = en;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+/* ============ 交互 ============ */
+cardEl.addEventListener("click", (e) => {
+  if (e.target.closest("button")) return;
+  cardEl.classList.toggle("flipped");
+});
+flipBtn.addEventListener("click", () => cardEl.classList.toggle("flipped"));
+
+document.getElementById("speakBtnFront").addEventListener("click", (e) => { e.stopPropagation(); speakCurrent(); });
+document.getElementById("speakBtnBack").addEventListener("click", (e) => { e.stopPropagation(); speakCurrent(); });
+
+prevBtn.addEventListener("click", () => { if (index > 0) { index--; render(); } });
+nextBtn.addEventListener("click", () => { if (index < deck.length - 1) { index++; render(); } });
+
+orderBtn.addEventListener("click", () => {
+  deck = RAW_FILES.slice(); index = 0;
+  orderBtn.textContent = "顺序播放";
+  render();
+});
+shuffleBtn.addEventListener("click", () => {
+  deck = RAW_FILES.slice();
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  index = 0;
+  render();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowLeft") prevBtn.click();
+  else if (e.key === "ArrowRight") nextBtn.click();
+  else if (e.key === " " || e.key === "Enter") { e.preventDefault(); cardEl.classList.toggle("flipped"); }
+});
+
+render();
+</script>
+</body>
+</html>
