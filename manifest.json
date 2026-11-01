@@ -1,17 +1,20 @@
 {
-  "name": "词汇闪卡 Vocabulary Flashcards",
-  "short_name": "词汇闪卡",
-  "description": "英文词汇图片闪卡，支持发音、随机/顺序播放与离线使用",
+  "name": "Vocabulary Flashcards",
+  "short_name": "Flashcards",
   "start_url": "./index.html",
-  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#0f172a",
-  "theme_color": "#1f2937",
-  "lang": "zh-CN",
+  "theme_color": "#2563eb",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }
