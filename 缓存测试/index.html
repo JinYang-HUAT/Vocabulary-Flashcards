@@ -396,7 +396,7 @@ document.addEventListener('keydown', e => {
   } else if (e.key === 'PageDown') {
     e.preventDefault();
     navigate(1);
-  } else if (e.key === ' ' || e.key === 'Spacebar') {
+  } else if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' ) {
     // 空格翻转（额外便利，可选）
     e.preventDefault();
     flip();
