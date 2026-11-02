@@ -387,7 +387,7 @@ document.getElementById('flashcard').addEventListener('click', flip);
 
 // 键盘快捷键
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
+  if (e.key === 'Enter' || e.key === 'MediaPlayPause' || e.key === 'MediaTrackPlayPause') {
     e.preventDefault();
     speakCurrent();
   } else if (e.key === 'PageUp') {
