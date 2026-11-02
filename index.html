@@ -372,9 +372,9 @@ document.getElementById("shuffleBtn").addEventListener("click", () => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "PageUp") { e.preventDefault(); prevBtn.click(); }
   else if (e.key === "PageDown") { e.preventDefault(); nextBtn.click(); }
-  else if (e.key === 'Enter' || e.key === 'MediaPlayPause' || e.key === 'MediaTrackPlayPause') { e.preventDefault(); cardEl.classList.toggle("flipped"); }
-   //(e.key === " " || e.key === "ArrowUp" || e.key === "ArrowDown")
-  else if (e.key === "Enter") { e.preventDefault(); speakCurrent(); }
+  else if ((e.key === " " || e.key === 'Spacebar' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); cardEl.classList.toggle("flipped"); }
+   //
+  else if (e.key === "Enter" || e.key === 'MediaPlayPause' || e.key === 'MediaTrackPlayPause') { e.preventDefault(); speakCurrent(); }
 });
 
 /* ============ 启动与 PWA ============ */
