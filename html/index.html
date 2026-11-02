@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>词汇闪卡 · Vocabulary Flashcards</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: #f0f2f5;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 16px;
+  }
+  .app {
+    max-width: 640px; width: 100%;
+    background: #fff; border-radius: 28px;
+    padding: 24px 24px 32px;
+    box-shadow: 0 20px 40px -12px rgba(0,0,0,.25);
+  }
+  h1 { font-size: 1.6rem; font-weight: 600; color: #1e293b; margin-bottom: 20px; text-align: center; letter-spacing: -.3px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; align-items: center; justify-content: center; }
+  select {
+    padding: 10px 16px; font-size: 1rem; border-radius: 40px;
+    border: 1.5px solid #e2e8f0; background: #fff; color: #0f172a;
+    font-weight: 500; cursor: pointer; outline: none; flex: 1 1 auto; min-width: 160px;
+  }
+  select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+  .btn-group { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #fff; border: 1.5px solid #e2e8f0; padding: 10px 20px;
+    border-radius: 40px; font-size: .95rem; font-weight: 500; color: #1e293b;
+    cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  button:hover { background: #f8fafc; border-color: #94a3b8; }
+  button.primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  button.primary:hover { background: #2563eb; }
+  button:active { transform: scale(.97); }
+  .flashcard {
+    background: #f8fafc; border-radius: 24px; padding: 24px 16px 16px;
+    margin-bottom: 20px; border: 1px solid #eef2f6; min-height: 320px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .card-face { width: 100%; text-align: center; }
+  .image-wrapper {
+    position: relative; width: 100%; min-height: 180px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px; background: #fff; border-radius: 16px;
+    overflow: hidden; border: 1px solid #e9edf2;
+  }
+  .image-wrapper img { max-width: 100%; max-height: 200px; object-fit: contain; display: block; transition: opacity .2s; }
+  .loading-spinner {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 28px; height: 28px; border: 3px solid #e2e8f0; border-top-color: #3b82f6;
+    border-radius: 50%; animation: spin .8s linear infinite; display: none;
+  }
+  .loading-spinner.active { display: block; }
+  @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+  .front-letters { font-size: 2.8rem; font-weight: 700; color: #0f172a; letter-spacing: 2px; line-height: 1.2; margin: 4px 0 8px; word-break: break-word; }
+  .back-word { font-size: 1.8rem; font-weight: 600; color: #0f172a; margin-bottom: 4px; }
+  .phonetic { font-size: 1.1rem; color: #475569; margin-bottom: 8px; }
+  .pos-def { font-size: 1.1rem; color: #1e293b; line-height: 1.5; max-width: 480px; margin: 0 auto 12px; padding: 0 8px; }
+  .pos-def strong { color: #3b82f6; font-weight: 600; }
+  .audio-btn {
+    background: #fff; border: 1.5px solid #cbd5e1; border-radius: 40px;
+    padding: 8px 20px; font-size: 1rem; display: inline-flex; align-items: center;
+    gap: 8px; color: #1e293b; cursor: pointer; transition: all .15s; margin: 6px 0;
+  }
+  .audio-btn:hover { background: #f1f5f9; border-color: #3b82f6; }
+  .audio-btn svg { width: 18px; height: 18px; fill: currentColor; }
+  .nav-area { display: flex; gap: 12px; justify-content: center; align-items: center; margin-top: 8px; }
+  .nav-area button { flex: 1; justify-content: center; padding: 14px 0; }
+  .counter { text-align: center; font-size: .9rem; color: #64748b; margin-top: 16px; font-weight: 500; }
+  .shortcut-hint { text-align: center; font-size: .8rem; color: #94a3b8; margin-top: 12px; border-top: 1px dashed #e2e8f0; padding-top: 14px; }
+  .shortcut-hint kbd { background: #f1f5f9; padding: 2px 8px; border-radius: 12px; font-family: monospace; border: 1px solid #e2e8f0; font-size: .8rem; }
+  .hidden { display: none !important; }
+  .offline-banner {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    background: #f59e0b; color: #fff; padding: 8px 18px; border-radius: 40px;
+    font-size: .85rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    z-index: 999; display: none;
+  }
+  .offline-banner.active { display: block; }
+</style>
+</head>
+<body>
+<div class="offline-banner" id="offlineBanner">⚠️ 当前离线，图片可能来自缓存</div>
+
+<div class="app">
+  <h1>📚 词汇闪卡</h1>
+
+  <div class="controls">
+    <select id="groupSelect">
+      <option value="list">list.txt (18 词)</option>
+    </select>
+    <div class="btn-group">
+      <button id="orderToggle" class="primary" title="切换顺序/随机">🔀 随机</button>
+      <button id="flipBtn" class="primary" title="翻转卡片">🔄 翻转</button>
+    </div>
+  </div>
+
+  <!-- 闪卡区域 -->
+  <div class="flashcard" id="flashcard">
+    <!-- 正面 -->
+    <div id="frontSide" class="card-face">
+      <div class="image-wrapper" id="frontImageWrapper">
+        <div class="loading-spinner" id="frontSpinner"></div>
+        <img id="frontImage" src="" alt="word image" style="opacity:0;">
+      </div>
+      <div class="front-letters" id="frontLetters">A</div>
+      <button class="audio-btn" id="frontAudioBtn">
+        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        播放发音
+      </button>
+    </div>
+    <!-- 反面 -->
+    <div id="backSide" class="card-face hidden">
+      <div class="image-wrapper" id="backImageWrapper">
+        <div class="loading-spinner" id="backSpinner"></div>
+        <img id="backImage" src="" alt="word image" style="opacity:0;">
+      </div>
+      <div class="back-word" id="backWord">abnormal</div>
+      <div class="phonetic" id="backPhonetic">/æbˈnɔːrml/</div>
+      <div class="pos-def" id="backDef"><strong>adj.</strong> 异常的，反常的</div>
+      <button class="audio-btn" id="backAudioBtn">
+        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        播放发音
+      </button>
+    </div>
+  </div>
+
+  <!-- 导航 -->
+  <div class="nav-area">
+    <button id="prevBtn">⬅ 上一张 (PgUp)</button>
+    <button id="nextBtn">下一张 (PgDn) ➡</button>
+  </div>
+  <div class="counter" id="counter">1 / 18</div>
+  <div class="shortcut-hint">
+    <kbd>Enter</kbd> 播放当前面发音 · <kbd>PgUp</kbd> 上一张 · <kbd>PgDn</kbd> 下一张
+  </div>
+</div>
+
+<script>
+/* ===== 第 2、3 批代码将粘贴在此处 ===== */
+/* ========== 第 2 批：词汇数据 ========== */
+const CDN_BASE = 'https://cdn.jsdelivr.net/gh/JinYang-HUAT/Vocabulary-Flashcards@main/images/';
+
+const wordData = {
+  'list': [
+    { file: 'abnormal in the sense of 正常人.jpg', word: 'abnormal', phonetic: '/æbˈnɔːrml/', posDef: '<strong>adj.</strong> 异常的，反常的（“正常人”意义上的反常）' },
+    { file: 'abnormal.jpg', word: 'abnormal', phonetic: '/æbˈnɔːrml/', posDef: '<strong>adj.</strong> 异常的，反常的' },
+    { file: 'abnormal.webp', word: 'abnormal', phonetic: '/æbˈnɔːrml/', posDef: '<strong>adj.</strong> 异常的，反常的' },
+    { file: 'autoignition.png', word: 'autoignition', phonetic: '/ˌɔːtoʊɪɡˈnɪʃn/', posDef: '<strong>n.</strong> 自燃，自动点火' },
+    { file: 'boss.jpg', word: 'boss', phonetic: '/bɔːs/', posDef: '<strong>n.</strong> 老板，上司；<strong>v.</strong> 指挥，支配' },
+    { file: 'lead as a leader.webp', word: 'lead', phonetic: '/liːd/', posDef: '<strong>v.</strong> 领导，带领；<strong>n.</strong> 领导地位（作为领导者）' },
+    { file: 'leaded.jpg', word: 'leaded', phonetic: '/ˈledɪd/', posDef: '<strong>adj.</strong> 含铅的；（汽油）加铅的' },
+    { file: 'unleaded-0.png', word: 'unleaded', phonetic: '/ˌʌnˈledɪd/', posDef: '<strong>adj.</strong> 无铅的；（汽油）不含铅的' },
+    { file: 'unleaded.jpg', word: 'unleaded', phonetic: '/ˌʌnˈledɪd/', posDef: '<strong>adj.</strong> 无铅的；（汽油）不含铅的' },
+    { file: 'upper-1.jpg', word: 'upper', phonetic: '/ˈʌpər/', posDef: '<strong>adj.</strong> 上面的，上部的；<strong>n.</strong> 鞋帮' },
+    { file: 'upper.jpg', word: 'upper', phonetic: '/ˈʌpər/', posDef: '<strong>adj.</strong> 上面的，上部的；<strong>n.</strong> 鞋帮' },
+    { file: 'valve seat.jpg', word: 'valve seat', phonetic: '/vælv siːt/', posDef: '<strong>n.</strong> 阀座' },
+    { file: 'valve timing.jpg', word: 'valve timing', phonetic: '/vælv ˈtaɪmɪŋ/', posDef: '<strong>n.</strong> 气门正时，配气定时' },
+    { file: 'vapor.jpeg', word: 'vapor', phonetic: '/ˈveɪpər/', posDef: '<strong>n.</strong> 蒸汽，水汽' },
+    { file: 'versatile.jpg', word: 'versatile', phonetic: '/ˈvɜːrsətl/', posDef: '<strong>adj.</strong> 多才多艺的，多用途的' },
+    { file: 'volatile', word: 'volatile', phonetic: '/ˈvɑːlətl/', posDef: '<strong>adj.</strong> 易挥发的；不稳定的，易变的' },
+    { file: 'vibration.png', word: 'vibration', phonetic: '/vaɪˈbreɪʃn/', posDef: '<strong>n.</strong> 振动，颤动' },
+    { file: 'volatility.jpeg', word: 'volatility', phonetic: '/ˌvɑːləˈtɪləti/', posDef: '<strong>n.</strong> 挥发性；波动性，易变性' },
+    { file: 'wax.jpg', word: 'wax', phonetic: '/wæks/', posDef: '<strong>n.</strong> 蜡；<strong>v.</strong> 打蜡，增大' }
+  ]
+};
+/* ========== 第 3 批：交互逻辑 ========== */
+// DOM 元素
+const groupSelect   = document.getElementById('groupSelect');
+const orderToggle   = document.getElementById('orderToggle');
+const flipBtn       = document.getElementById('flipBtn');
+const frontSide     = document.getElementById('frontSide');
+const backSide      = document.getElementById('backSide');
+const frontImage    = document.getElementById('frontImage');
+const frontSpinner  = document.getElementById('frontSpinner');
+const backImage     = document.getElementById('backImage');
+const backSpinner   = document.getElementById('backSpinner');
+const frontLetters  = document.getElementById('frontLetters');
+const backWord      = document.getElementById('backWord');
+const backPhonetic  = document.getElementById('backPhonetic');
+const backDef       = document.getElementById('backDef');
+const frontAudioBtn = document.getElementById('frontAudioBtn');
+const backAudioBtn  = document.getElementById('backAudioBtn');
+const prevBtn       = document.getElementById('prevBtn');
+const nextBtn       = document.getElementById('nextBtn');
+const counter       = document.getElementById('counter');
+const offlineBanner = document.getElementById('offlineBanner');
+
+// 状态
+let currentList  = [];
+let currentIndex = 0;
+let isFront      = true;
+let isRandom     = false;
+const preloadedImages = {};
+
+// 工具：拼接 CDN 地址
+function getImageUrl(filename) {
+  return CDN_BASE + encodeURIComponent(filename);
+}
+
+// 工具：是否图片文件
+function isImageFile(filename) {
+  return /\.(png|jpe?g|webp|avif|gif|svg|bmp)$/i.test(filename);
+}
+
+// 工具：取显示单词（word 字段优先）
+function getDisplayWord(item) {
+  return item.word || item.file.replace(/\.[^.]+$/, '');
+}
+
+// 工具：首字母
+function getFirstLetter(word) {
+  return (word.charAt(0) || '?').toUpperCase();
+}
+
+// 图片加载失败兜底
+window.handleImgError = function (img) {
+  img.onload = null;
+  img.style.opacity = 1;
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120">' +
+    '<rect width="200" height="120" fill="#f1f5f9"/>' +
+    '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#94a3b8" font-size="14">Image N/A</text></svg>'
+  );
+  const sp = img.parentElement.querySelector('.loading-spinner');
+  if (sp) sp.classList.remove('active');
+};
+
+// 设置图片 + 加载中提示
+function setImgWithSpinner(imgEl, spinnerEl, url) {
+  spinnerEl.classList.add('active');
+  imgEl.style.opacity = 0;
+  imgEl.onload = function () {
+    spinnerEl.classList.remove('active');
+    imgEl.style.opacity = 1;
+  };
+  imgEl.onerror = function () { window.handleImgError(imgEl); };
+  imgEl.src = url;
+  // 命中缓存时 onload 可能不触发，主动判断
+  if (imgEl.complete && imgEl.naturalWidth > 0) {
+    spinnerEl.classList.remove('active');
+    imgEl.style.opacity = 1;
+  }
+}
+
+// 预加载指定条目（含后续 N 张）
+function preloadAround(index, count) {
+  for (let i = 0; i <= count; i++) {
+    const idx = (index + i) % currentList.length;
+    const item = currentList[idx];
+    if (!item || !isImageFile(item.file)) continue;
+    const url = getImageUrl(item.file);
+    if (!preloadedImages[url]) {
+      const im = new Image();
+      im.src = url;
+      preloadedImages[url] = im;
+    }
+  }
+}
+
+// 发音
+function speak(text) {
+  if (!('speechSynthesis' in window)) {
+    alert('当前浏览器不支持语音合成，请使用 Chrome / Edge / Safari。');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  u.rate = 0.9;
+  const voices = speechSynthesis.getVoices();
+  const en = voices.find(v => /^en(-|_)/i.test(v.lang)) || null;
+  if (en) u.voice = en;
+  speechSynthesis.speak(u);
+}
+
+// 渲染
+function render() {
+  const item = currentList[currentIndex];
+  if (!item) return;
+
+  const word = getDisplayWord(item);
+  const hasImg = isImageFile(item.file);
+  const imgUrl = getImageUrl(item.file);
+
+  // 正反面图片
+  if (hasImg) {
+    setImgWithSpinner(frontImage, frontSpinner, imgUrl);
+    setImgWithSpinner(backImage,  backSpinner,  imgUrl);
+  } else {
+    // 非图片：显示占位
+    frontSpinner.classList.remove('active');
+    backSpinner.classList.remove('active');
+    const placeholder = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120">' +
+      '<rect width="200" height="120" fill="#f8fafc" stroke="#e2e8f0"/>' +
+      '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#94a3b8" font-size="13">' + word + '</text></svg>'
+    );
+    frontImage.style.opacity = 1; frontImage.src = placeholder;
+    backImage.style.opacity  = 1; backImage.src  = placeholder;
+  }
+
+  // 正面
+  frontLetters.textContent = getFirstLetter(word);
+
+  // 反面
+  backWord.textContent     = word;
+  backPhonetic.textContent = item.phonetic || '/—/';
+  backDef.innerHTML        = item.posDef || '暂无释义';
+
+  // 计数
+  counter.textContent = `${currentIndex + 1} / ${currentList.length}`;
+
+  // 正反面切换
+  frontSide.classList.toggle('hidden', !isFront);
+  backSide.classList.toggle('hidden',  isFront);
+
+  // 预加载后续 3 张
+  preloadAround(currentIndex, 3);
+}
+
+// 切换（delta: -1 / +1）
+function navigate(delta) {
+  if (!currentList.length) return;
+  if (isRandom) {
+    if (currentList.length === 1) return;
+    let n;
+    do { n = Math.floor(Math.random() * currentList.length); }
+    while (n === currentIndex);
+    currentIndex = n;
+  } else {
+    currentIndex = (currentIndex + delta + currentList.length) % currentList.length;
+  }
+  isFront = true;
+  render();
+}
+
+// 翻转
+function flip() {
+  isFront = !isFront;
+  render();
+}
+
+// 播放当前面发音
+function speakCurrent() {
+  const item = currentList[currentIndex];
+  if (!item) return;
+  speak(getDisplayWord(item));
+}
+
+// 更新顺序/随机按钮
+function updateOrderBtn() {
+  orderToggle.textContent = isRandom ? '🔀 随机' : '📋 顺序';
+  orderToggle.classList.toggle('primary', true);
+}
+
+// 加载分组
+function loadGroup(key) {
+  currentList  = (wordData[key] || []).slice();
+  currentIndex = 0;
+  isFront      = true;
+  preloadAround(0, 4);
+  render();
+}
+
+/* ---------- 事件绑定 ---------- */
+groupSelect.addEventListener('change', e => loadGroup(e.target.value));
+
+orderToggle.addEventListener('click', () => {
+  isRandom = !isRandom;
+  updateOrderBtn();
+});
+
+flipBtn.addEventListener('click', flip);
+prevBtn.addEventListener('click', () => navigate(-1));
+nextBtn.addEventListener('click', () => navigate(1));
+
+frontAudioBtn.addEventListener('click', e => { e.stopPropagation(); speakCurrent(); });
+backAudioBtn .addEventListener('click', e => { e.stopPropagation(); speakCurrent(); });
+
+// 点击卡片也可翻转
+document.getElementById('flashcard').addEventListener('click', flip);
+
+// 键盘快捷键
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    speakCurrent();
+  } else if (e.key === 'PageUp') {
+    e.preventDefault();
+    navigate(-1);
+  } else if (e.key === 'PageDown') {
+    e.preventDefault();
+    navigate(1);
+  } else if (e.key === ' ' || e.key === 'Spacebar') {
+    // 空格翻转（额外便利，可选）
+    e.preventDefault();
+    flip();
+  }
+});
+
+// 语音列表异步加载（部分浏览器需触发）
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = () => { /* 预取即可 */ };
+}
+
+/* ---------- Service Worker 注册（方案 A） ---------- */
+const IMAGE_FILES = wordData.list
+  .map(i => i.file)
+  .filter(f => /\.(png|jpe?g|webp|avif|gif|svg|bmp)$/i.test(f))
+  .map(f => CDN_BASE + encodeURIComponent(f));
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .then(reg => {
+        // 把图片清单传给 SW（首次安装时缓存）
+        if (reg.active) {
+          reg.active.postMessage({ type: 'CACHE_IMAGES', urls: IMAGE_FILES });
+        }
+        navigator.serviceWorker.addEventListener('message', ev => {
+          if (ev.data && ev.data.type === 'CACHE_DONE') {
+            console.log('离线缓存完成：', ev.data.count, '张图片');
+          }
+        });
+      })
+      .catch(err => console.warn('Service Worker 注册失败：', err));
+  });
+}
+
+// 离线状态提示
+function updateOnlineStatus() {
+  offlineBanner.classList.toggle('active', !navigator.onLine);
+}
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+/* ---------- 初始化 ---------- */
+updateOrderBtn();
+loadGroup(groupSelect.value);
+</script>
+</body>
+</html>
